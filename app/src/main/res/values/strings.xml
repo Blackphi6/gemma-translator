@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Gemma翻訳スタンド</string>
+
+    <string name="hint_input_text">翻訳したいテキストを入力してください(日本語⇄英語)</string>
+    <string name="label_translate_button">翻訳する</string>
+    <string name="label_result_placeholder">翻訳結果がここに表示されます</string>
+    <string name="label_brightness">画面の明るさ</string>
+
+    <string name="status_model_loading">モデルを読み込んでいます…</string>
+    <string name="status_model_ready">準備完了。テキストを入力して翻訳できます。</string>
+    <string name="status_translating">翻訳中…</string>
+    <string name="status_model_missing">モデルファイルが見つかりません。\n次のいずれかに配置してください:\n・%1$s\n・/sdcard/Download/%2$s\n配置後にこの画面へ戻ると自動的に読み込みます。</string>
+    <string name="status_model_error">モデルの読み込みに失敗しました: %1$s</string>
+    <string name="status_translate_error">翻訳に失敗しました: %1$s</string>
+
+    <string name="action_grant_permission">アクセスを許可する</string>
+    <string name="toast_empty_input">翻訳するテキストを入力してください</string>
+</resources>

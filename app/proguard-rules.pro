@@ -1,0 +1,1 @@
+# このファイルに追加したルールはapp/build.gradleのproguardFilesで指定したデフォルト設定に追記される。
