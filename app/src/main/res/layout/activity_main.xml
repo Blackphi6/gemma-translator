@@ -46,12 +46,53 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- 翻訳元言語 ⇄ 翻訳先言語の選択(Google翻訳風) -->
+    <LinearLayout
+        android:id="@+id/row_lang_select"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="20dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintTop_toBottomOf="@id/seek_brightness"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <Spinner
+            android:id="@+id/spinner_source_lang"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/surface_dark"
+            android:spinnerMode="dropdown" />
+
+        <Button
+            android:id="@+id/btn_swap_lang"
+            android:layout_width="48dp"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="8dp"
+            android:backgroundTint="@color/surface_dark"
+            android:minWidth="0dp"
+            android:minHeight="0dp"
+            android:padding="0dp"
+            android:text="@string/label_swap_lang"
+            android:textColor="@color/white" />
+
+        <Spinner
+            android:id="@+id/spinner_target_lang"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="@color/surface_dark"
+            android:spinnerMode="dropdown" />
+    </LinearLayout>
+
     <!-- 翻訳元テキスト入力欄 -->
     <EditText
         android:id="@+id/et_input"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_marginTop="20dp"
+        android:layout_marginTop="12dp"
         android:background="@color/surface_dark"
         android:gravity="top|start"
         android:hint="@string/hint_input_text"
@@ -62,7 +103,7 @@
         android:textSize="18sp"
         app:layout_constraintHeight_default="percent"
         app:layout_constraintHeight_percent="0.2"
-        app:layout_constraintTop_toBottomOf="@id/seek_brightness"
+        app:layout_constraintTop_toBottomOf="@id/row_lang_select"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 

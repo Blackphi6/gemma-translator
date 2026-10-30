@@ -2,10 +2,12 @@
 <resources>
     <string name="app_name">Gemma翻訳スタンド</string>
 
-    <string name="hint_input_text">翻訳したいテキストを入力してください(日本語⇄英語)</string>
+    <string name="hint_input_text">翻訳したいテキストを入力してください</string>
     <string name="label_translate_button">翻訳する</string>
     <string name="label_result_placeholder">翻訳結果がここに表示されます</string>
     <string name="label_brightness">画面の明るさ</string>
+    <string name="label_swap_lang">⇄</string>
+    <string name="label_auto_detect">検出した言語</string>
 
     <string name="status_model_loading">モデルを読み込んでいます…</string>
     <string name="status_model_ready">準備完了。テキストを入力して翻訳できます。</string>

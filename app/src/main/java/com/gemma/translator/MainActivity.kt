@@ -10,6 +10,7 @@ import android.os.Environment
 import android.provider.Settings
 import android.view.View
 import android.view.WindowManager
+import android.widget.ArrayAdapter
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -32,6 +33,28 @@ import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Locale
+
+private data class Language(val code: String, val displayName: String, val englishName: String)
+
+// Google翻訳のように選べる言語一覧。englishNameはLLMへのプロンプトで使う。
+private val SUPPORTED_LANGUAGES = listOf(
+    Language("ja", "日本語", "Japanese"),
+    Language("en", "英語", "English"),
+    Language("zh", "中国語(簡体字)", "Simplified Chinese"),
+    Language("zh-TW", "中国語(繁体字)", "Traditional Chinese"),
+    Language("ko", "韓国語", "Korean"),
+    Language("fr", "フランス語", "French"),
+    Language("de", "ドイツ語", "German"),
+    Language("es", "スペイン語", "Spanish"),
+    Language("pt", "ポルトガル語", "Portuguese"),
+    Language("it", "イタリア語", "Italian"),
+    Language("ru", "ロシア語", "Russian"),
+    Language("ar", "アラビア語", "Arabic"),
+    Language("hi", "ヒンディー語", "Hindi"),
+    Language("th", "タイ語", "Thai"),
+    Language("vi", "ベトナム語", "Vietnamese"),
+    Language("id", "インドネシア語", "Indonesian"),
+)
 
 /**
  * Gemmaモデルをローカル推論させる常駐型翻訳スタンド。
@@ -63,6 +86,7 @@ class MainActivity : AppCompatActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setupBrightnessSlider()
+        setupLanguageSpinners()
         binding.btnTranslate.setOnClickListener { onTranslateClicked() }
         binding.btnGrantPermission.setOnClickListener { requestStoragePermission() }
 
@@ -122,6 +146,43 @@ class MainActivity : AppCompatActivity() {
             override fun onStartTrackingTouch(seekBar: SeekBar?) {}
             override fun onStopTrackingTouch(seekBar: SeekBar?) {}
         })
+    }
+
+    // ------------------------------------------------------------------
+    // 翻訳元/翻訳先言語の選択(Google翻訳風)
+    // ------------------------------------------------------------------
+
+    private fun setupLanguageSpinners() {
+        val autoLabel = getString(R.string.label_auto_detect)
+        val sourceNames = listOf(autoLabel) + SUPPORTED_LANGUAGES.map { it.displayName }
+        val targetNames = SUPPORTED_LANGUAGES.map { it.displayName }
+
+        binding.spinnerSourceLang.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, sourceNames)
+        binding.spinnerTargetLang.adapter =
+            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, targetNames)
+
+        binding.spinnerSourceLang.setSelection(SUPPORTED_LANGUAGES.indexOfFirst { it.code == "ja" } + 1)
+        binding.spinnerTargetLang.setSelection(SUPPORTED_LANGUAGES.indexOfFirst { it.code == "en" })
+
+        binding.btnSwapLang.setOnClickListener {
+            val sourcePos = binding.spinnerSourceLang.selectedItemPosition
+            if (sourcePos == 0) return@setOnClickListener // 検出した言語は入れ替え不可
+            val targetPos = binding.spinnerTargetLang.selectedItemPosition
+            binding.spinnerSourceLang.setSelection(targetPos + 1)
+            binding.spinnerTargetLang.setSelection(sourcePos - 1)
+        }
+    }
+
+    /** nullは「検出した言語」(自動判定)を表す。 */
+    private fun selectedSourceLanguage(): Language? {
+        val pos = binding.spinnerSourceLang.selectedItemPosition
+        return if (pos <= 0) null else SUPPORTED_LANGUAGES[pos - 1]
+    }
+
+    private fun selectedTargetLanguage(): Language {
+        val pos = binding.spinnerTargetLang.selectedItemPosition.coerceIn(0, SUPPORTED_LANGUAGES.size - 1)
+        return SUPPORTED_LANGUAGES[pos]
     }
 
     // ------------------------------------------------------------------
@@ -285,7 +346,7 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch(Dispatchers.Default) {
             try {
-                val systemInstruction = buildSystemInstruction(inputText)
+                val systemInstruction = buildSystemInstruction()
                 val conversationConfig = ConversationConfig(
                     systemInstruction = Contents.of(systemInstruction),
                     samplerConfig = SamplerConfig(topK = 40, topP = 0.95, temperature = 0.3),
@@ -316,20 +377,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * 入力に日本語が含まれていれば英訳、それ以外は和訳するようにターゲット言語を切り替える。
-     * システムプロンプトでLLMの出力を翻訳結果のみに限定する。
+     * スピナーで選択された翻訳元/翻訳先言語をもとにシステムプロンプトを組み立てる。
+     * 翻訳元が「検出した言語」の場合は言語判定もLLMに任せる。
      */
-    private fun buildSystemInstruction(inputText: String): String {
-        val targetLanguage = if (containsJapanese(inputText)) "English" else "Japanese"
-        return "You are an expert translator. Translate the user's text into $targetLanguage. " +
-            "Output ONLY the translation result, with no explanation, notes, or quotation marks."
-    }
-
-    private fun containsJapanese(text: String): Boolean {
-        return text.any { ch ->
-            ch in '぀'..'ゟ' || // ひらがな
-                ch in '゠'..'ヿ' || // カタカナ
-                ch in '一'..'鿿' // 漢字
+    private fun buildSystemInstruction(): String {
+        val target = selectedTargetLanguage()
+        val source = selectedSourceLanguage()
+        return if (source == null) {
+            "You are an expert translator. Detect the language of the user's text and translate it into ${target.englishName}. " +
+                "Output ONLY the translation result, with no explanation, notes, or quotation marks."
+        } else {
+            "You are an expert translator. Translate the user's text from ${source.englishName} to ${target.englishName}. " +
+                "Output ONLY the translation result, with no explanation, notes, or quotation marks."
         }
     }
 }
