@@ -35,8 +35,9 @@ android {
         viewBinding true
     }
 
-    // Gemmaモデル(.task/.bin)をassetsに同梱する場合に圧縮せずそのまま入れるための設定
+    // Gemmaモデル(.litertlm等)をassetsに同梱する場合に圧縮せずそのまま入れるための設定
     aaptOptions {
+        noCompress 'litertlm'
         noCompress 'task'
         noCompress 'bin'
     }
@@ -50,6 +51,8 @@ dependencies {
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.1'
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1'
 
-    // MediaPipe LLM Inference API (Gemmaをローカル推論させるためのランタイム)
-    implementation 'com.google.mediapipe:tasks-genai:0.10.14'
+    // LiteRT-LM: MediaPipe LLM Inference API(tasks-genai)の後継で、Gemma 3以降の
+    // .litertlmモデルを動かすための現行ランタイム。tasks-genaiはメンテナンスのみで
+    // 新形式の.taskファイルがクラッシュしたため、こちらに移行した。
+    implementation 'com.google.ai.edge.litertlm:litertlm-android:0.18.1'
 }

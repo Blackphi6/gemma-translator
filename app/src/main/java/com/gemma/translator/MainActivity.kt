@@ -17,7 +17,11 @@ import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.gemma.translator.databinding.ActivityMainBinding
-import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.ai.edge.litertlm.Contents
+import com.google.ai.edge.litertlm.ConversationConfig
+import com.google.ai.edge.litertlm.Engine
+import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.SamplerConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -32,19 +36,20 @@ import java.util.Locale
 /**
  * Gemmaモデルをローカル推論させる常駐型翻訳スタンド。
  * 時計表示・翻訳・輝度調整をひとつの画面でまとめて提供する。
+ * 推論ランタイムはLiteRT-LM(MediaPipe LLM Inference APIの後継)を使用する。
  */
 class MainActivity : AppCompatActivity() {
 
     companion object {
         // 読み込むモデルファイル名。実機に配置するファイル名と一致させること。
-        // litert-community/Gemma3-1B-IT (Hugging Face) の .task 形式モデルを使用。
-        private const val MODEL_FILE_NAME = "Gemma3-1B-IT_multi-prefill-seq_q4_ekv2048.task"
+        // litert-community/Gemma3-1B-IT (Hugging Face) の .litertlm 形式モデルを使用。
+        private const val MODEL_FILE_NAME = "Gemma3-1B-IT_multi-prefill-seq_q4_ekv4096.litertlm"
         private const val REQUEST_STORAGE_PERMISSION = 1001
     }
 
     private lateinit var binding: ActivityMainBinding
 
-    private var llmInference: LlmInference? = null
+    private var engine: Engine? = null
     private var isModelReady = false
     private var isTranslating = false
     private var clockJob: Job? = null
@@ -76,7 +81,7 @@ class MainActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         clockJob?.cancel()
-        llmInference?.close()
+        engine?.close()
     }
 
     // ------------------------------------------------------------------
@@ -170,7 +175,7 @@ class MainActivity : AppCompatActivity() {
     // ------------------------------------------------------------------
 
     private fun tryLoadModel() {
-        if (isModelReady || llmInference != null) return
+        if (isModelReady || engine != null) return
 
         binding.tvStatus.text = getString(R.string.status_model_loading)
         binding.btnGrantPermission.visibility = View.GONE
@@ -183,15 +188,14 @@ class MainActivity : AppCompatActivity() {
                 return@launch
             }
             try {
-                val options = LlmInference.LlmInferenceOptions.builder()
-                    .setModelPath(modelPath)
-                    .setMaxTokens(512)
-                    .setTopK(40)
-                    .setTemperature(0.3f)
-                    .setRandomSeed(0)
-                    .build()
-                val inference = LlmInference.createFromOptions(this@MainActivity, options)
-                llmInference = inference
+                val newEngine = Engine(
+                    EngineConfig(
+                        modelPath = modelPath,
+                        cacheDir = cacheDir.path
+                    )
+                )
+                newEngine.initialize()
+                engine = newEngine
                 isModelReady = true
                 withContext(Dispatchers.Main) { onModelReady() }
             } catch (e: Exception) {
@@ -265,8 +269,8 @@ class MainActivity : AppCompatActivity() {
 
     private fun onTranslateClicked() {
         if (isTranslating) return
-        val inference = llmInference
-        if (inference == null || !isModelReady) return
+        val currentEngine = engine
+        if (currentEngine == null || !isModelReady) return
 
         val inputText = binding.etInput.text?.toString()?.trim().orEmpty()
         if (inputText.isEmpty()) {
@@ -280,9 +284,15 @@ class MainActivity : AppCompatActivity() {
         binding.tvStatus.text = getString(R.string.status_translating)
 
         lifecycleScope.launch(Dispatchers.Default) {
-            val prompt = buildPrompt(inputText)
             try {
-                val result = inference.generateResponse(prompt)
+                val systemInstruction = buildSystemInstruction(inputText)
+                val conversationConfig = ConversationConfig(
+                    systemInstruction = Contents.of(systemInstruction),
+                    samplerConfig = SamplerConfig(topK = 40, topP = 0.95, temperature = 0.3),
+                )
+                val result = currentEngine.createConversation(conversationConfig).use { conversation ->
+                    conversation.sendMessage(inputText).toString()
+                }
                 withContext(Dispatchers.Main) { onTranslateFinished(result.trim()) }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { onTranslateError(e) }
@@ -309,11 +319,10 @@ class MainActivity : AppCompatActivity() {
      * 入力に日本語が含まれていれば英訳、それ以外は和訳するようにターゲット言語を切り替える。
      * システムプロンプトでLLMの出力を翻訳結果のみに限定する。
      */
-    private fun buildPrompt(inputText: String): String {
+    private fun buildSystemInstruction(inputText: String): String {
         val targetLanguage = if (containsJapanese(inputText)) "English" else "Japanese"
-        return "You are an expert translator. Translate the following text into $targetLanguage. " +
-            "Output ONLY the translation result, with no explanation, notes, or quotation marks.\n\n" +
-            "Text: $inputText\nTranslation:"
+        return "You are an expert translator. Translate the user's text into $targetLanguage. " +
+            "Output ONLY the translation result, with no explanation, notes, or quotation marks."
     }
 
     private fun containsJapanese(text: String): Boolean {

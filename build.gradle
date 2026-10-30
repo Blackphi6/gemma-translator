@@ -1,11 +1,14 @@
 buildscript {
-    ext.kotlin_version = '1.9.23'
+    // LiteRT-LM(litertlm-android)がKotlin 2.4.0のメタデータでビルドされているため、
+    // それを読めるバージョンまで上げる必要がある(1.9.23では非互換エラーになる)。
+    ext.kotlin_version = '2.4.21'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.3.2'
+        // Kotlin 2.4.21はAGP 8.5.2以上を要求するため8.13.2に更新
+        classpath 'com.android.tools.build:gradle:8.13.2'
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
     }
 }
